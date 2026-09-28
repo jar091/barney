@@ -68,29 +68,41 @@ namespace BARNEY_NS {
       float y = m1 - ra * rr + t * m2;
 
       if (y > 0.f && y < d2 && t > 1e-6f && t < hit_t) {
-        hit_t = t;
-        isec_normal = normalize(d2 * (oa + t * rd) - ba * y);
-        hadHit = true;
+        const vec3f n = d2 * (oa + t * rd) - ba * y;
+        const float n2 = dot(n,n);
+        if (n2 > 0.f && isfinite(n2)) {
+          hit_t = t;
+          isec_normal = n * (1.f/sqrtf(n2));
+          hadHit = true;
+        }
       }
 
       // Caps. 
       float h1 = m3 * m3 - m5 + ra * ra;
-      if (h1 > 0.f) {
+      if (ra > 0.f && h1 > 0.f) {
         t = -m3 - sqrtf(h1);
         if (t > 1e-6f && t < hit_t) {
-          hit_t = t;
-          isec_normal = normalize((ro + t * rd - pa) / ra);
-          hadHit = true;
+          const vec3f n = ro + t * rd - pa;
+          const float n2 = dot(n,n);
+          if (n2 > 0.f && isfinite(n2)) {
+            hit_t = t;
+            isec_normal = n * (1.f/sqrtf(n2));
+            hadHit = true;
+          }
         }
       }
 #if 1
       float h2 = m6 * m6 - m7 + rb * rb;
-      if (h2 > 0.f) {
+      if (rb > 0.f && h2 > 0.f) {
         t = -m6 - sqrtf(h2);
         if (t > 1e-6f && t < hit_t) {
-          hit_t = t;
-          isec_normal = normalize((ro + t * rd - pb) / rb);
-          hadHit = true;
+          const vec3f n = ro + t * rd - pb;
+          const float n2 = dot(n,n);
+          if (n2 > 0.f && isfinite(n2)) {
+            hit_t = t;
+            isec_normal = n * (1.f/sqrtf(n2));
+            hadHit = true;
+          }
         }
       }
 #endif
