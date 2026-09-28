@@ -19,6 +19,11 @@ namespace BARNEY_NS {
         set at all would return false (because it hasn't even been
         set, and thus not explicitly disabled */
       static bool explicitlyDisabled(const std::string &key);
+
+      /*! returns the integer value of a 'key=value' BARNEY_CONFIG
+          entry, or 'defaultValue' if the key was not set or its value
+          is not an integer (a key without value counts as 1) */
+      static int intValue(const std::string &key, int defaultValue);
       
       static void init();
       

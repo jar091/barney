@@ -2,6 +2,7 @@
 // CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "native/FromEnv.h"
 #include "native/render/Renderer.h"
 #include "native/Context.h"
 
@@ -108,6 +109,7 @@ namespace BARNEY_NS {
         = bgTexture ? bgTexture->getTextureObject(device)
         : 0;
       dd.ambientRadiance = ambientRadiance;
+      dd.hideEnvBackground = FromEnv::enabled("hide_env") ? 1 : 0;
       dd.pathsPerPixel = pathsPerPixel;
       dd.cutPlane = cutPlane;
       dd.maxVolumeBounces = maxVolumeBounces;

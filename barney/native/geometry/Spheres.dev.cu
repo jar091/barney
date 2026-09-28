@@ -160,9 +160,7 @@ namespace BARNEY_NS {
 
       
         if (hit_t < t_max) {
-          // "abuse" ray.P to store local sphere coordinate
           vec3f osPositionOfHit = /*shifted!*/org + /*shifted!*/hit_t*dir;
-          ray.P = osPositionOfHit;
       
           hit_t += t_move;
 
@@ -170,6 +168,52 @@ namespace BARNEY_NS {
           if (OptixGlobals::hitOnInvisibleSide(
                                                OptixGlobals::get(ti), hit_t, ti))
             return;
+
+          // Material opacity (ANARI 'opacity' with alphaMode blend/mask),
+          // same stochastic scheme as for capsules and triangles. Only
+          // evaluated for non-opaque materials, so opaque spheres cost
+          // nothing extra.
+          {
+            const World::DD &world = OptixGlobals::get(ti).world;
+            const DeviceMaterial &material
+              = world.materials[self.materialID];
+            if (material.alphaMode != AlphaMode::Opaque) {
+              vec3f objectN
+                = (osPositionOfHit == center)
+                ? vec3f(1.f,0.f,0.f)
+                : (osPositionOfHit - center);
+              HitAttributes hitData;
+              hitData.primID         = primID;
+              hitData.instID         = ti.getInstanceID();
+              hitData.t              = hit_t;
+              hitData.objectPosition = osPositionOfHit;
+              hitData.objectNormal   = make_vec4f(normalize(objectN));
+              hitData.worldPosition
+                = ti.transformPointFromObjectToWorldSpace(osPositionOfHit);
+              hitData.worldNormal
+                = normalize(ti.transformVectorFromObjectToWorldSpace(objectN));
+              if (self.colors)
+                (vec3f&)hitData.color = self.colors[primID];
+              auto interpolator = [&](const GeometryAttribute::DD &attrib,
+                                      bool faceVarying) -> vec4f
+              { return attrib.fromArray.valueAt(primID); };
+              self.setHitAttributes(hitData,interpolator,world,false);
+              const float coverage
+                = material.coverage(hitData,world.samplers,false);
+              if (coverage < 1.f) {
+                Random rng(ray.rngSeed,hash(ti.getRTCInstanceIndex(),
+                                            ti.getGeometryIndex(),
+                                            ti.getPrimitiveIndex()));
+                if (rng() > coverage)
+                  return;
+              }
+            }
+          }
+
+          // "abuse" ray.P to store local sphere coordinate; only for
+          // accepted hits, so a rejected candidate can not overwrite the
+          // position of a closer, already reported hit
+          ray.P = osPositionOfHit;
 
           // ------------------------------------------------------------------
           ti.reportIntersection(hit_t, 0);

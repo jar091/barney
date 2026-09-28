@@ -7,6 +7,18 @@
 #include "barney/native/DeviceGroup.h"
 #include "barney/native/render/RayQueue.h"
 #include "barney/native/FromEnv.h"
+// for the optional exchange optimizations (ts_* flags):
+#include "barney/native/globalTrace/TwoStageEngine.h"
+#include "barney/native/render/OptixGlobals.h"
+#include "barney/native/GlobalModel.h"
+#include "barney/native/ModelSlot.h"
+#include "barney/native/geometry/Triangles.h"
+#include "barney/native/geometry/Spheres.h"
+#include "barney/native/geometry/Cylinders.h"
+#include "barney/native/geometry/Capsules.h"
+#include "barney/native/geometry/Cones.h"
+#include "barney/native/geometry/IsoSurface.h"
+#include "barney/native/volume/Volume.h"
 
 namespace BARNEY_NS {
   namespace native {
@@ -118,6 +130,332 @@ namespace BARNEY_NS {
                              RayOnly *rayOnly,
                              int N);
   
+    // ==================================================================
+    // optional exchange optimizations (ts_cull, ts_compact_hits,
+    // ts_small_payload, ts_pipeline); see TwoStageEngine.h. None of
+    // the code below is used unless at least one of the flags is set.
+    // ==================================================================
+
+#if defined(__CUDACC__)
+    template<typename F>
+    __global__ void twoStageForEachKernel(int n, F f)
+    {
+      const int i = blockIdx.x*blockDim.x + threadIdx.x;
+      if (i < n) f(i);
+    }
+#endif
+
+    /*! device 'environment' for ts_opt::Engine: memory, kernel
+        launches (all on the device's compute stream), fences (cuda
+        events), and the local trace (same launch as
+        Context::traceRaysLocally(), but asynchronous) */
+    struct TwoStageEnv {
+      typedef native::Ray      Ray;
+      typedef RNGSeed          Seed;
+      typedef PackedBSDF::Data BSDFData;
+      typedef vec3h            NormalT;
+      struct Fence {
+#if defined(__CUDACC__)
+        cudaEvent_t ev[2] = { 0, 0 };
+#endif
+        int n = 0;
+      };
+
+      TwoStageEnv(MPIContext *context, Device *device)
+        : context(context), device(device), rtc(device->rtc)
+      {}
+
+      void *alloc(size_t n)     { return rtc->allocMem(n); }
+      void  free(void *p)       { rtc->freeMem(p); }
+      void *allocHost(size_t n) { return rtc->allocHost(n); }
+      void  freeHost(void *p)   { rtc->freeHost(p); }
+      void copyAsync(void *d, const void *s, size_t n) { rtc->copyAsync(d,s,n); }
+      void memsetAsync(void *p, int v, size_t n) { rtc->memsetAsync(p,v,n); }
+      void syncAll() { rtc->sync(); }
+
+      template<typename F>
+      void forEach(int n, const F &f)
+      {
+        if (n <= 0) return;
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        const int bs = 128;
+        twoStageForEachKernel<<<divRoundUp(n,bs),bs,0,rtc->stream>>>(n,f);
+#else
+        for (int i=0;i<n;i++) f(i);
+#endif
+      }
+
+      Fence *createFence()
+      {
+        Fence *f = new Fence;
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        for (int i=0;i<2;i++)
+          BARNEY_CUDA_CALL(EventCreateWithFlags(&f->ev[i],cudaEventDisableTiming));
+#endif
+        return f;
+      }
+      void destroyFence(Fence *f)
+      {
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        for (int i=0;i<2;i++)
+          if (f->ev[i]) cudaEventDestroy(f->ev[i]);
+#endif
+        delete f;
+      }
+      /*! fence covering all work issued so far on the compute stream */
+      void record(Fence *f)
+      {
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        BARNEY_CUDA_CALL(EventRecord(f->ev[0],rtc->stream));
+        f->n = 1;
+#else
+        rtc->sync();
+        f->n = 0;
+#endif
+      }
+      bool query(Fence *f)
+      {
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        for (int i=0;i<f->n;i++) {
+          cudaError_t rc = cudaEventQuery(f->ev[i]);
+          if (rc == cudaErrorNotReady) return false;
+          if (rc != cudaSuccess)
+            throw std::runtime_error(std::string("#bn.ts_opt: cuda error ")
+                                     +cudaGetErrorString(rc));
+        }
+#endif
+        return true;
+      }
+      void wait(Fence *f)
+      {
+#if defined(__CUDACC__)
+        SetActiveGPU forDuration(device);
+        for (int i=0;i<f->n;i++)
+          BARNEY_CUDA_CALL(EventSynchronize(f->ev[i]));
+#endif
+      }
+
+      /*! trace 'n' (staged) rays against all local model slots,
+          without waiting for completion; 'f' gets recorded such that
+          it completes once the trace is done */
+      void traceAsync(Ray *rays, int n, Fence *f)
+      {
+        SetActiveGPU forDuration(device);
+        int numLaunches = 0;
+        if (n > 0 && model) {
+          for (auto slot : model->modelSlots) {
+            for (auto dev : *slot->devices) {
+              if (dev != device) continue;
+              OptixGlobals dd;
+              dd.rays     = rays;
+              dd.hitIDs   = 0;
+              dd.numRays  = n;
+              dd.world    = slot->world->getDD(dev);
+              dd.accel    = slot->getInstanceAccel(dev);
+              dd.cutPlane = context->activeCutPlane;
+              if (dd.accel == 0) continue;
+              // the optix backend re-uses its (pinned) launch-param
+              // buffer, so never have two launches in flight
+              if (numLaunches > 0) rtc->sync();
+              const int bs = 256;
+              const int nb = divRoundUp(n,bs);
+              dev->traceRays->launch(/* same (inverted) layout as in
+                                        traceRaysLocally */
+                                     vec2i(bs,nb),&dd);
+              numLaunches++;
+            }
+          }
+        }
+        record(f);
+#if defined(__CUDACC__) && defined(BARNEY_RTC_OPTIX)
+        // optix trace launches run on their own (launch-param)
+        // stream, not on the compute stream
+        if (numLaunches > 0 && !rtc->activeTraceStreams.empty()) {
+          BARNEY_CUDA_CALL(EventRecord(f->ev[1],rtc->activeTraceStreams.back()));
+          f->n = 2;
+        }
+#endif
+      }
+
+      MPIContext  *const context;
+      Device      *const device;
+      rtc::Device *const rtc;
+      /*! model of the current traceRays() call */
+      GlobalModel *model = nullptr;
+    };
+
+    /*! copies a device data array to the host; returns false if the
+        array's element size does not match T */
+    template<typename T>
+    static bool tsDownload(const PODData::SP &data, std::vector<T> &out)
+    {
+      out.clear();
+      if (!data || data->count == 0) return true;
+      if (owlSizeOf(data->type) != sizeof(T)) return false;
+      out.resize(data->count);
+      data->download(data->devices->get(0),out.data());
+      return true;
+    }
+
+    /*! object-space bounds of everything in the group that the trace
+        kernel can hit (surfaces AND volumes); returns false if the
+        bounds of some object can not be determined (the caller then
+        has to assume 'infinite' bounds). Note these are computed from
+        the raw input arrays (all vertices, plus maximum radius), so
+        they are conservative. */
+    static bool tsGroupBounds(Group *group, box3f &bounds)
+    {
+      bounds = box3f();
+      for (auto &vol : group->volumes) {
+        if (!vol) continue;
+        if (!vol->sf) return false;
+        if (!vol->sf->worldBounds.empty())
+          bounds.extend(vol->sf->worldBounds);
+      }
+      for (auto &geom : group->geoms) {
+        if (!geom) continue;
+        Geometry *g = geom.get();
+        if (auto t = dynamic_cast<Triangles*>(g)) {
+          std::vector<vec3f> v;
+          if (!tsDownload(t->vertices,v)) return false;
+          for (auto p : v) bounds.extend(p);
+        } else if (auto sp = dynamic_cast<Spheres*>(g)) {
+          std::vector<vec3f> v;
+          std::vector<float> r;
+          if (!tsDownload(sp->origins,v)) return false;
+          if (v.empty()) continue;
+          if (!tsDownload(sp->radii,r)) return false;
+          float maxR = sp->radii ? 0.f : sp->defaultRadius;
+          for (auto ri : r) maxR = std::max(maxR,ri);
+          box3f b;
+          for (auto p : v) b.extend(p);
+          bounds.extend(box3f(b.lower-vec3f(maxR),b.upper+vec3f(maxR)));
+        } else if (auto cy = dynamic_cast<Cylinders*>(g)) {
+          std::vector<vec3f> v;
+          std::vector<float> r;
+          if (!tsDownload(cy->vertices,v)) return false;
+          if (v.empty()) continue;
+          if (!cy->radii || !tsDownload(cy->radii,r)) return false;
+          float maxR = 0.f;
+          for (auto ri : r) maxR = std::max(maxR,ri);
+          box3f b;
+          for (auto p : v) b.extend(p);
+          bounds.extend(box3f(b.lower-vec3f(maxR),b.upper+vec3f(maxR)));
+        } else if (auto co = dynamic_cast<Cones*>(g)) {
+          std::vector<vec3f> v;
+          std::vector<float> r;
+          if (!tsDownload(co->vertices,v)) return false;
+          if (v.empty()) continue;
+          if (!co->radii || !tsDownload(co->radii,r)) return false;
+          float maxR = 0.f;
+          for (auto ri : r) maxR = std::max(maxR,ri);
+          box3f b;
+          for (auto p : v) b.extend(p);
+          bounds.extend(box3f(b.lower-vec3f(maxR),b.upper+vec3f(maxR)));
+        } else if (auto ca = dynamic_cast<Capsules*>(g)) {
+          std::vector<vec4f> v;
+          if (!tsDownload(ca->vertices,v)) return false;
+          for (auto p : v) {
+            const vec3f c(p.x,p.y,p.z);
+            const float r = fabsf(p.w);
+            bounds.extend(box3f(c-vec3f(r),c+vec3f(r)));
+          }
+        } else if (auto iso = dynamic_cast<IsoSurface*>(g)) {
+          if (!iso->sf) return false;
+          if (!iso->sf->worldBounds.empty())
+            bounds.extend(iso->sf->worldBounds);
+        } else
+          // unknown geometry type
+          return false;
+      }
+      return true;
+    }
+
+    struct TwoStageOpt {
+      TwoStageOpt(MPIContext *context, Device *device,
+                  const ts_opt::Topology &topo, const ts_opt::Config &cfg)
+        : env(context,device), engine(env,topo,cfg), cfg(cfg), device(device)
+      {}
+
+      /*! world-space bounds of all data this rank's local trace can
+          hit, i.e., the union over all instances (of all model slots
+          on our device) of the instance-transformed group bounds.
+          Cached until the model or any of its slots changes. */
+      box3f localBounds(GlobalModel *model)
+      {
+        std::vector<std::pair<const void*,uint64_t>> sig;
+        sig.push_back({model,0});
+        for (auto slot : model->modelSlots)
+          sig.push_back({slot.get(),slot->contentEpoch});
+        if (sig == boundsSignature) return cachedBounds;
+
+        box3f bounds;
+        bool infinite = false;
+        for (auto slot : model->modelSlots) {
+          bool onOurDevice = false;
+          for (auto dev : *slot->devices) if (dev == device) onOurDevice = true;
+          if (!onOurDevice) continue;
+          for (size_t i=0;i<slot->instances.groups.size() && !infinite;i++) {
+            Group *group = slot->instances.groups[i].get();
+            if (!group) continue;
+            box3f gb;
+            if (!tsGroupBounds(group,gb)) { infinite = true; break; }
+            if (gb.empty()) continue;
+            bounds.extend(xfmBounds(slot->instances.xfms[i],gb));
+          }
+        }
+        if (infinite)
+          bounds = box3f(vec3f(-FLT_MAX),vec3f(+FLT_MAX));
+        if (FromEnv::logQueues || cfg.statsInterval > 0) {
+          std::stringstream ss;
+          ss << "#bn.ts_opt(r" << device->globalRank() << "): local bounds "
+             << bounds << (infinite ? " (infinite: unknown object type)" : "")
+             << std::endl;
+          std::cout << ss.str();
+        }
+        boundsSignature = sig;
+        cachedBounds = bounds;
+        return bounds;
+      }
+
+      TwoStageEnv  env;
+      ts_opt::Engine<TwoStageEnv> engine;
+      const ts_opt::Config cfg;
+      Device *const device;
+      std::vector<std::pair<const void*,uint64_t>> boundsSignature;
+      box3f cachedBounds;
+    };
+
+    TwoStage::~TwoStage()
+    {
+      int finalized = 0;
+      MPI_Finalized(&finalized);
+      // the engine frees mpi communicators; if mpi is already gone,
+      // just leak it (like the default path leaks its buffers)
+      if (opt && !finalized)
+        delete opt;
+      opt = nullptr;
+    }
+
+    void TwoStage::traceRaysOpt(GlobalModel *model,
+                                uint32_t rngSeed,
+                                bool needHitIDs)
+    {
+      assert(needHitIDs == false); // not implemented (same as default path)
+      SetActiveGPU forDuration(device);
+      opt->env.model = model;
+      box3f bounds = opt->cfg.cull ? opt->localBounds(model) : box3f();
+      opt->engine.traceRays(device->rayQueue->traceAndShadeReadQueue.rays,
+                            device->rayQueue->numActive,
+                            bounds);
+      opt->env.model = nullptr;
+    }
+
     TwoStage::TwoStage(MPIContext *context)
       : GlobalTraceImpl(context),
         context(context),
@@ -196,6 +534,38 @@ namespace BARNEY_NS {
             }
         }
         world.barrier();
+      }
+
+      // ------------------------------------------------------------------
+      // optional exchange optimizations; if none is set, 'opt' stays
+      // null and traceRays() runs the unchanged default code path
+      // ------------------------------------------------------------------
+      ts_opt::Config cfg;
+      cfg.cull          = FromEnv::enabled("ts_cull");
+      cfg.compactHits   = FromEnv::enabled("ts_compact_hits");
+      cfg.smallPayload  = FromEnv::enabled("ts_small_payload");
+      cfg.numChunks     = std::max(0,FromEnv::intValue("ts_pipeline",0));
+      cfg.statsInterval = std::max(0,FromEnv::intValue("ts_stats",0));
+      cfg.collectives   = opt_mpi;
+      if (cfg.cull || cfg.compactHits || cfg.smallPayload || cfg.numChunks > 0) {
+        cfg.numChunks = std::min(std::max(1,cfg.numChunks),(int)ts_opt::TS_MAX_CHUNKS);
+        ts_opt::Topology tt;
+        tt.numHosts    = this->numHosts;
+        tt.gpusPerHost = gpusPerHost;
+        tt.hostIdx     = hostIdx;
+        tt.gpuIdx      = gpuIdx;
+        tt.world       = world.comm;
+        tt.rankOf      = _rankOf;
+        opt = new TwoStageOpt(context,(Device*)device,tt,cfg);
+        if (world.rank == 0)
+          std::cout << "#bn.two-stage: exchange optimizations enabled:"
+                    << " ts_cull=" << cfg.cull
+                    << " ts_compact_hits=" << cfg.compactHits
+                    << " ts_small_payload=" << cfg.smallPayload
+                    << " ts_pipeline=" << cfg.numChunks << " (chunks)"
+                    << " mpi=" << (cfg.collectives ? "collectives (opt_mpi)" : "point-to-point")
+                    << " ts_stats=" << cfg.statsInterval
+                    << std::endl;
       }
     }
 
@@ -420,6 +790,11 @@ namespace BARNEY_NS {
                              uint32_t rngSeed,
                              bool needHitIDs) 
     {
+      if (opt) {
+        // any of the ts_* optimizations enabled
+        traceRaysOpt(model,rngSeed,needHitIDs);
+        return;
+      }
       assert(needHitIDs == false); // not implemented right now
       ensureAllOurQueuesAreLargeEnough();
       exchangeHowManyRaysEachDeviceHas();

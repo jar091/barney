@@ -33,6 +33,11 @@ namespace BARNEY_NS {
         uint32_t dbg        : 1;
         uint32_t crosshair  : 1;
       };
+      /*! random-number state of the ray; the tracing ranks need it for
+          stochastic intersections (volume free-flight sampling, alpha
+          coverage). Without it the staged rays on the receiving rank
+          would all start from the same (uninitialized) seed. */
+      RNGSeed  rngSeed;
     };
 
     struct HitOnly {

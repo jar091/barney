@@ -67,6 +67,12 @@ namespace BARNEY_NS {
 
       void build();
 
+      /*! incremented whenever instances, instance transforms, or the
+          instance accel of this slot change; lets consumers (e.g., the
+          bounds-based ray culling of the two-stage ray exchange) cache
+          information derived from the slot's content */
+      uint64_t contentEpoch = 0;
+
       // ------------------------------------------------------------------
       // do not change order of these:
       // ------------------------------------------------------------------

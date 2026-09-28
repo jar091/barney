@@ -25,6 +25,10 @@ namespace BARNEY_NS {
         vec4f              cutPlane;
         int                maxVolumeBounces;
         int                volumeMultiScatter;
+        /*! BARNEY_CONFIG hide_env=1: primary rays that miss everything
+            show the background colour instead of the env map (the env
+            map still lights the scene, like Blender's light-path trick) */
+        int                hideEnvBackground;
       };
     
       Renderer(Context *context);

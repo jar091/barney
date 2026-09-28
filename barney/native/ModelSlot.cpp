@@ -55,6 +55,7 @@ namespace BARNEY_NS {
           : Group::SP{};
       }
       std::copy(xfms,xfms+numUserInstances,instances.xfms.data());
+      ++contentEpoch;
       for (auto device : *devices) {
         device->sbtDirty = true;
         auto pld = getPLD(device);
@@ -192,6 +193,7 @@ namespace BARNEY_NS {
         return;
       }
       std::copy(xfms, xfms + numInstances, instances.xfms.data());
+      ++contentEpoch;
 
       updateWorldLightsFromInstances();
 
@@ -210,6 +212,7 @@ namespace BARNEY_NS {
 
     void ModelSlot::build()
     {
+      ++contentEpoch;
       // Keep light extraction identical to transform-only updates.
       updateWorldLightsFromInstances();
   

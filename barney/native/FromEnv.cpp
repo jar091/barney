@@ -10,6 +10,7 @@ namespace BARNEY_NS {
 
     namespace fromEnv {
       std::map<std::string,bool> boolValues;
+      std::map<std::string,std::string> rawValues;
     }
     
     bool FromEnv::logQueues     = false;
@@ -50,6 +51,7 @@ namespace BARNEY_NS {
       for (auto kv : keyValue) {
         const std::string key = kv.first;
         const std::string value = kv.second;
+        fromEnv::rawValues[key] = value;
       
         std::cout << "#barney.config " << key << " = '" << value << "'" << std::endl;
 
@@ -68,6 +70,10 @@ namespace BARNEY_NS {
           logBackend = true;
         else if (key == "LOG_TOPO" || key == "log_topo")
           logTopo = true;
+        else if (key == "ts_cull" || key == "ts_compact_hits" ||
+                 key == "ts_small_payload" || key == "ts_pipeline" ||
+                 key == "ts_stats")
+          /* two-stage optimizations, read in TwoStage.cu */;
         else
           std::cerr << "Warning: unknown or unrecognized BARNEY_CONFIG key '" << key << "'" << std::endl;
       }
@@ -81,6 +87,24 @@ namespace BARNEY_NS {
       return it->second;
     }
     
+    int FromEnv::intValue(const std::string &key, int defaultValue)
+    {
+      auto &rawValues = fromEnv::rawValues;
+      auto it = rawValues.find(key);
+      if (it == rawValues.end()) return defaultValue;
+      const std::string &v = it->second;
+      if (v.empty() || v == "on" || v == "ON") return 1;
+      if (v == "off" || v == "OFF") return 0;
+      try {
+        size_t pos = 0;
+        int i = std::stoi(v,&pos);
+        if (pos != v.size()) return defaultValue;
+        return i;
+      } catch (...) {
+        return defaultValue;
+      }
+    }
+
     bool FromEnv::explicitlyDisabled(const std::string &key)
     {
       auto &boolValues = fromEnv::boolValues;

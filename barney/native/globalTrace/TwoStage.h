@@ -11,6 +11,10 @@ namespace BARNEY_NS {
   namespace native {
 
     struct MPIContext;
+    /*! state of the optional, run-time switchable exchange
+        optimizations (ts_cull, ts_compact_hits, ts_small_payload,
+        ts_pipeline); see TwoStageEngine.h. Defined in TwoStage.cu. */
+    struct TwoStageOpt;
 
     /*! for now, only implmenet for
       a) single device per rank
@@ -41,7 +45,14 @@ namespace BARNEY_NS {
       const bool opt_mpi;
 
       TwoStage(MPIContext *context);
+      ~TwoStage() override;
       void traceRays(GlobalModel *model, uint32_t rngSeed, bool needHitIDs) override;
+
+      /*! null unless at least one of the ts_* optimizations is
+          enabled; if null, the (unchanged) default code path is used */
+      TwoStageOpt *opt = nullptr;
+      /*! the optimized variant of traceRays() (only if opt != null) */
+      void traceRaysOpt(GlobalModel *model, uint32_t rngSeed, bool needHitIDs);
     
       void ensureAllOurQueuesAreLargeEnough();
       void exchangeHowManyRaysEachDeviceHas();    

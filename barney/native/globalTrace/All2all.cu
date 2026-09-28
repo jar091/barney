@@ -28,6 +28,7 @@ namespace BARNEY_NS {
       rayOnly[tid].isSpecular = rayQueue[tid].isSpecular;
       rayOnly[tid].isShadowRay = rayQueue[tid].isShadowRay;
       rayOnly[tid].dbg = rayQueue[tid]._dbg;
+      rayOnly[tid].rngSeed = rayQueue[tid].rngSeed;
 #endif
     }
 
@@ -72,6 +73,7 @@ namespace BARNEY_NS {
       rayQueue[tid].isSpecular = rayOnly[tid].isSpecular;
       rayQueue[tid].isShadowRay = rayOnly[tid].isShadowRay;
       rayQueue[tid]._dbg = rayOnly[tid].dbg;
+      rayQueue[tid].rngSeed = rayOnly[tid].rngSeed;
       rayQueue[tid].bsdfType = PackedBSDF::NONE;
 #endif
     }

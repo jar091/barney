@@ -464,7 +464,7 @@ namespace BARNEY_NS {
                               const Renderer::DD &renderer,
                               Ray &ray)
     {
-      if (world.envMapLight.texture)
+      if (world.envMapLight.texture && !renderer.hideEnvBackground)
         return radianceFromEnv(world,renderer,ray);
       return
         // primary rays do store a default misscolor in the ray itself
