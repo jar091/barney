@@ -277,18 +277,34 @@ namespace BARNEY_NS {
       if (world.envMapLight.texture) {
         ls = world.envMapLight.sample(random,dbg);
       } else {
+        // uniform ambient radiance, sampled over the hemisphere around N
+        // (the whole sphere without a normal, e.g. in volumes); the pdf
+        // has to match ambientLightPdf() for the MIS weights
         ls.direction = randomDirection(random);
         ls.distance  = BARNEY_INF;
+        ls.radiance  = vec3f(renderer.ambientRadiance);
         if (N != vec3f(0.f)) {
-          ls.radiance  = TWO_PI*renderer.ambientRadiance;
           if (dot(ls.direction,N) < 0.f) ls.direction = -ls.direction;
           ls.pdf       = ONE_OVER_TWO_PI;
         } else {
-          ls.radiance  = FOUR_PI*renderer.ambientRadiance;
           ls.pdf       = ONE_OVER_FOUR_PI;
         }
       }
       return true;
+    }
+
+    /*! pdf with which sampleEnvLight() samples direction 'dir' at a
+        point with normal N */
+    inline __rtc_device
+    float envLightPdf(const World::DD &world,
+                      const vec3f dir,
+                      const vec3f N)
+    {
+      if (world.envMapLight.texture)
+        return world.envMapLight.pdf(dir);
+      if (N == vec3f(0.f))
+        return ONE_OVER_FOUR_PI;
+      return dot(dir,N) > 0.f ? ONE_OVER_TWO_PI : 0.f;
     }
 
     inline __rtc_device
@@ -464,7 +480,7 @@ namespace BARNEY_NS {
                               const Renderer::DD &renderer,
                               Ray &ray)
     {
-      if (world.envMapLight.texture)
+      if (world.envMapLight.texture && world.envMapLight.visible > 0.f)
         return radianceFromEnv(world,renderer,ray);
       return
         // primary rays do store a default misscolor in the ray itself
@@ -733,7 +749,7 @@ namespace BARNEY_NS {
 #if USE_MIS
           if (!lightIsDirLight && lightNeedsMIS) {
             float pdf_lightRay_lightDir
-              = world.envMapLight.pdf(ls.direction);
+              = envLightPdf(world,ls.direction,Ngff);
             float pdf_scatterRay_lightDir
               = bsdf.pdf(dg,ls.direction);
             // compute MIS weight weight that shadow direction
@@ -872,7 +888,8 @@ namespace BARNEY_NS {
 #if USE_MIS
       if (lightNeedsMIS && !isinf(scatterResult.pdf)) {
         float pdf_scatterRay_scatterDir = bsdf.pdf(dg,ray.dir);
-        float pdf_lightRay_scatterDir   = world.envMapLight.pdf(ray.dir);
+        float pdf_lightRay_scatterDir
+          = envLightPdf(world,ray.dir,Ngff);
         
         state.misWeight
           = pdf_scatterRay_scatterDir

@@ -31,6 +31,11 @@ namespace BARNEY_NS {
       /*! SPEC: the overall amount of light emitted by the light in a
         direction, in W/sr */
       float m_intensity = NAN;
+      /*! SPEC: the overall amount of light energy emitted, in W */
+      float m_power = NAN;
+      /*! SPEC: the amount of light emitted by a point on the light
+        source in a direction, in W/sr/m^2 */
+      float m_radiance = NAN;
     };
 
   }

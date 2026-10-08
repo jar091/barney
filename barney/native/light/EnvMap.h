@@ -41,6 +41,8 @@ namespace BARNEY_NS {
         rtc::TextureObject  texture = 0;
         vec2i               dims;
         float               scale;
+        /*! whether primary rays see the map as background */
+        float               visible = 1.f;
         const float        *cdf_y = 0;
         const float        *allCDFs_x = 0;
       };
@@ -81,6 +83,7 @@ namespace BARNEY_NS {
         vec3f       direction { 1.f, 0.f, 0.f };
         vec3f       up        { 0.f, 0.f, 1.f };
         float       scale = 1.f;
+        float       visible = 1.f;
       } params;
       Texture::SP texture;
 

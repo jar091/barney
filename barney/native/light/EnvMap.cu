@@ -157,6 +157,7 @@ namespace BARNEY_NS {
         dd.allCDFs_x = 0;
       }
       dd.scale   = params.scale;
+      dd.visible = params.visible;
       dd.toWorld = toWorld;
       dd.toLocal = toLocal;
       return dd;
@@ -285,6 +286,10 @@ namespace BARNEY_NS {
     
       if (member == "scale") {
         params.scale = value;
+        return true;
+      }
+      if (member == "visible") {
+        params.visible = value;
         return true;
       }
 

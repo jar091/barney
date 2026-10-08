@@ -77,7 +77,12 @@ namespace BARNEY_NS {
         return (ANARIDevice)0;
       }
 #else
-        throw std::runtime_error("asking for MPI device, but this version of barney was built without MPI support");
+        // An exception must not leave the ANARI C API (it terminates the
+        // application); render with the local device instead.
+        std::cout << "#barney: asking for MPI device, but this version of barney "
+                  << "was built without MPI support; using the default device"
+                  << std::endl;
+        subType = "default";
 #endif
       }
       

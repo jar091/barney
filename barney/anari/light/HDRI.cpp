@@ -21,6 +21,7 @@ namespace BARNEY_NS {
     {
       Light::commitParameters();
       m_scale     = getParam<float>("scale", 1.f);
+      m_visible   = getParam<bool>("visible", true);
       m_up        = getParam<math::float3>("up", math::float3(0.f, 0.f, 1.f));
       m_direction = getParam<math::float3>("direction", math::float3(1.f, 0.f, 0.f));
       m_radiance  = getParamObject<helium::Array2D>("radiance");
@@ -52,6 +53,7 @@ namespace BARNEY_NS {
       bnSetVec(m_bnLight, "direction", m_direction);
       bnSetVec(m_bnLight, "up",        m_up);
       bnSet1f (m_bnLight, "scale",     m_scale);
+      bnSet1f (m_bnLight, "visible",   m_visible ? 1.f : 0.f);
 
       assert(m_radiance);
       int width  = m_radiance->size().x;

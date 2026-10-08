@@ -722,7 +722,13 @@ namespace BARNEY_NS {
           const float NdotL = fmaxf(dot(N, wi), 0.0f);
           const vec3f base = physicallybased::pbrEvalBase(&st, eta, N, Nc, V, wi);
           const float pdf = physicallybased::pbrBsdfPdf(&st, eta, N, Nc, V, wi);
-          return EvalRes(base * NdotL, pdf);
+          // The renderer's NEE term multiplies eval() by cos(Ng,L)/pi (the
+          // NVisii convention, whose eval() is pi*BRDF without the cosine),
+          // so return pi*BRDF here; returning BRDF*NdotL made all analytic
+          // lights too dark by about a factor pi.
+          if (NdotL <= 0.0f)
+            return EvalRes(vec3f(0.0f), pdf);
+          return EvalRes(base * ONE_PI, pdf);
         }
 
         // Importance-sample the BSDF (port of VisRTX nextRay): clearcoat lobe

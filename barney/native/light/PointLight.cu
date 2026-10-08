@@ -14,6 +14,9 @@ namespace BARNEY_NS {
       dd.power     = power;
       dd.intensity = intensity;
       dd.color     = color;
+      dd.direction = normalize(xfmVector(instanceXfm,direction));
+      dd.cosOuter  = cosOuter;
+      dd.cosInner  = cosInner;
       return dd;
     }
 
@@ -29,6 +32,14 @@ namespace BARNEY_NS {
         intensity = value;
         return true;
       }
+      if (member == "cosOuter") {
+        cosOuter = value;
+        return true;
+      }
+      if (member == "cosInner") {
+        cosInner = value;
+        return true;
+      }
       return false;
     }
   
@@ -38,6 +49,10 @@ namespace BARNEY_NS {
         return true;
       if (member == "position") {
         position = value;
+        return true;
+      }
+      if (member == "direction") {
+        direction = value;
         return true;
       }
       return false;

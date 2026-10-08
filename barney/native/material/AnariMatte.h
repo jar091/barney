@@ -58,11 +58,10 @@ namespace BARNEY_NS {
     {
       vec4f baseColor = this->color.eval(hitData,samplers,dbg);
 # if 1
-      float reflectance = .85f;
+      // ANARI matte: Lambertian BRDF color/pi (the albedo is the color
+      // itself, not scaled down).
       packedBSDF::Lambertian bsdf;
-      (vec3f&)bsdf.albedo = reflectance * (const vec3f&)baseColor
-        * (ONE_OVER_PI)
-        ;
+      (vec3f&)bsdf.albedo = (const vec3f&)baseColor;
 # else
       packedBSDF::NVisii bsdf;
       bsdf.setDefaults();

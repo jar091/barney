@@ -50,7 +50,11 @@ namespace BARNEY_NS {
         
         float cosThetaI = max(dot(wi, dg.Ns), 0.f);
         float pdf = cosineSampleHemispherePDF(cosThetaI);
-        return EvalRes(rtc::load(albedo) * ONE_OVER_PI * cosThetaI,pdf);
+        // pi*BRDF without the cosine, the renderer's NEE term applies
+        // cos/pi (see PhysicallyBased::eval).
+        if (cosThetaI <= 0.f)
+          return EvalRes(vec3f(0.f),pdf);
+        return EvalRes(rtc::load(albedo),pdf);
       }
 
       /*! simple omnidirectional phase function - scatter into any
@@ -69,7 +73,8 @@ namespace BARNEY_NS {
 
         scatter.dir = owl::common::xfmVector(owl::common::frame(N),localDir);
         scatter.pdf = cosineSampleHemispherePDF(localDir);
-        scatter.f_r  = rtc::load(albedo);
+        // The BRDF (albedo/pi); the renderer divides by the pdf.
+        scatter.f_r  = rtc::load(albedo) * ONE_OVER_PI;
         scatter.type = ScatterResult::DIFFUSE;
       }
       

@@ -25,6 +25,7 @@ namespace BARNEY_NS {
       void setBarneyParameters() override;
     
       float         m_scale     { 1.f };
+      bool          m_visible   { true };
       math::float3  m_up        { 0.f, 0.f, 1.f };
       math::float3  m_direction { 1.f, 0.f, 0.f };
       Array2DPtr    m_radiance;

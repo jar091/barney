@@ -34,6 +34,8 @@ set(BANARI_SOURCES
   light/Point.cpp
   light/Quad.h
   light/Quad.cpp
+  light/Spot.h
+  light/Spot.cpp
 
   SingleDeviceLibrary.cpp
   
