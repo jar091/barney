@@ -42,6 +42,38 @@ namespace BARNEY_NS {
         float    currViewProj[16]   = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
         float    prevViewProj[16]   = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 
+        /*! near/far clip planes (perspective and orthographic cameras
+          only). The planes are perpendicular to the camera direction
+          'clipAxis' (unit length), the distances are measured along
+          that axis, not along the ray. Only camera rays get clipped;
+          near=0 and far=inf mean 'no clipping' */
+        float clipNear = 0.f;
+        float clipFar  = BARNEY_INF;
+        vec3f clipAxis { 0.f, 0.f, 1.f };
+
+#if RTC_DEVICE_CODE
+        /*! true if camera rays need to get clipped at all */
+        inline __rtc_device bool hasClipPlanes() const
+        { return clipNear > 0.f || clipFar < 1e30f; }
+
+        /*! computes the distances along the camera ray with (unit)
+          direction 'dir' at which that ray crosses the near and far
+          clip planes. Returns false if the ray does not point into
+          the clipped half space at all */
+        inline __rtc_device bool getClipRange(vec3f dir,
+                                              float &tNear,
+                                              float &tFar) const
+        {
+          const float cosAxis = dot(dir,clipAxis);
+          tNear = 0.f;
+          tFar  = 1e30f;
+          if (cosAxis <= 1e-6f) return false;
+          if (clipNear > 0.f)  tNear = clipNear / cosAxis;
+          if (clipFar < 1e30f) tFar  = clipFar / cosAxis;
+          return true;
+        }
+#endif
+
         union {
           /* vector along u direction, for ONE pixel */
           struct {

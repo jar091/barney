@@ -178,6 +178,20 @@ namespace BARNEY_NS {
       ray.isShadowRay = false;
       ray.isInMedium  = false;
       ray.tMax        = 1e30f;
+      // Apply the camera's near/far clip planes. These are
+      // perpendicular to the camera direction, and only affect the
+      // camera rays generated here: such a ray starts on the near
+      // plane and ends on the far plane.
+      if (camera.hasClipPlanes()) {
+        float tNear, tFar;
+        if (camera.getClipRange(ray.dir,tNear,tFar)) {
+          ray.org += tNear * ray.dir;
+          if (tFar < 1e30f)
+            ray.tMax = max(tFar - tNear, 0.f);
+        } else {
+          ray.tMax = 0.f; // ray never reaches the near plane: show nothing
+        }
+      }
       // Apply cutting plane (disabled if w < -1e28f)
       if (renderer.cutPlane.w > -1e28f) {
         vec3f N = vec3f(renderer.cutPlane.x,
@@ -198,7 +212,10 @@ namespace BARNEY_NS {
           if (denom > 0.f) {
             float t_entry = -dist_org / denom;
             ray.org += t_entry * ray.dir;
-            // ray now starts on the plane; tMax stays 1e30f
+            // ray now starts on the plane; tMax stays 1e30f, unless
+            // the camera's far clip plane already shortened the ray
+            if (ray.tMax < 1e30f)
+              ray.tMax = max(ray.tMax - t_entry, 0.f);
           } else {
             ray.tMax = 0.f; // ray never enters visible side: show nothing
           }
@@ -206,6 +223,9 @@ namespace BARNEY_NS {
       }
       // ray.rngSeed     = rand.next;//state;
       state.numDiffuseBounces = 0;
+      state.numGlossyBounces = 0;
+      state.numTransmissionBounces = 0;
+      state.emissionOnly = 0;
 #if BARNEY_USE_MULTI_SCATTERING
       state.numVolumeBounces = 0;
 #endif

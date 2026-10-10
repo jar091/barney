@@ -36,6 +36,16 @@ namespace BARNEY_NS {
       m_maxVolumeBounces = getParam<int>("maxVolumeBounces", 0);
       m_sampleLimit = std::clamp(getParam<int>("sampleLimit", 1024), 1, INT_MAX);
       // m_maxVolumeBounces = getParam<int>("maxVolumeBounces", 8);
+
+      // path length limits and clamps; unset (or negative) ones keep
+      // barney's built-in limits
+      m_maxBounce = std::max(getParam<int>("maxBounce", -1), -1);
+      m_maxDiffuseBounce = std::max(getParam<int>("maxDiffuseBounce", -1), -1);
+      m_maxGlossyBounce = std::max(getParam<int>("maxGlossyBounce", -1), -1);
+      m_maxTransmissionBounce
+        = std::max(getParam<int>("maxTransmissionBounce", -1), -1);
+      m_clampDirect = std::max(getParam<float>("clampDirect", 0.f), 0.f);
+      m_clampIndirect = std::max(getParam<float>("clampIndirect", 0.f), 0.f);
     }
 
     void Renderer::finalize()
@@ -46,6 +56,12 @@ namespace BARNEY_NS {
       bnSet1f(barneyRenderer, "ambientRadiance", m_ambientRadiance);
       bnSet1i(barneyRenderer, "maxVolumeBounces", m_maxVolumeBounces);
       bnSet1i(barneyRenderer, "sampleLimit", m_sampleLimit);
+      bnSet1i(barneyRenderer, "maxBounce", m_maxBounce);
+      bnSet1i(barneyRenderer, "maxDiffuseBounce", m_maxDiffuseBounce);
+      bnSet1i(barneyRenderer, "maxGlossyBounce", m_maxGlossyBounce);
+      bnSet1i(barneyRenderer, "maxTransmissionBounce", m_maxTransmissionBounce);
+      bnSet1f(barneyRenderer, "clampDirect", m_clampDirect);
+      bnSet1f(barneyRenderer, "clampIndirect", m_clampIndirect);
       // bnSet1i(barneyRenderer, "volumeMultiScatter", (int)m_volumeMultiScatter);
       bnSet4f(barneyRenderer, "cutPlane",
               m_cutPlane.x, m_cutPlane.y, m_cutPlane.z, m_cutPlane.w);

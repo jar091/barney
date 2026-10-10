@@ -25,6 +25,20 @@ namespace BARNEY_NS {
         vec4f              cutPlane;
         int                maxVolumeBounces;
         int                volumeMultiScatter;
+        /*! path length limits with the meaning of cycles: number of
+          bounces after the camera hit, in total and per kind of
+          bounce; -1 means 'not set' (the built-in limits apply). The
+          bounce that exceeds a limit is still traced, but only
+          collects emission and environment light */
+        int                maxBounce;
+        int                maxDiffuseBounce;
+        int                maxGlossyBounce;
+        int                maxTransmissionBounce;
+        /*! limits of R+G+B of one light contribution to a path, for
+          light arriving at the camera hit (direct) and at later hits
+          (indirect); 0 means 'no clamp' */
+        float              clampDirectSum;
+        float              clampIndirectSum;
       };
     
       Renderer(Context *context);
@@ -58,6 +72,12 @@ namespace BARNEY_NS {
         int         maxVolumeBounces;
         int         volumeMultiScatter;
         int         sampleLimit;
+        int         maxBounce = -1;
+        int         maxDiffuseBounce = -1;
+        int         maxGlossyBounce = -1;
+        int         maxTransmissionBounce = -1;
+        float       clampDirect = 0.f;
+        float       clampIndirect = 0.f;
       } staged;
       vec4f       bgColor         = vec4f(0,0,0,1.f);
       Texture::SP bgTexture       = 0;
@@ -78,6 +98,13 @@ namespace BARNEY_NS {
       // int         volumeMultiScatter = 1;
       // maximum number of samples accumulated:
       int         sampleLimit = 1024;
+      /* path length limits and clamps, see DD; -1 and 0: not set */
+      int         maxBounce = -1;
+      int         maxDiffuseBounce = -1;
+      int         maxGlossyBounce = -1;
+      int         maxTransmissionBounce = -1;
+      float       clampDirect = 0.f;
+      float       clampIndirect = 0.f;
     };
 
   }

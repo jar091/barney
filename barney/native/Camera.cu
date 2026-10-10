@@ -75,6 +75,9 @@ namespace BARNEY_NS {
     float fovy      = 60.f;
     float focusDistance  = 0.f;
     float apertureRadius = 0.f;
+    /*! near/far clip plane distances, measured along 'direction' */
+    float clipNear       = 0.f;
+    float clipFar        = BARNEY_INF;
   };
   
   bool PerspectiveCamera::set1f(const std::string &member, const float &value)
@@ -95,6 +98,14 @@ namespace BARNEY_NS {
     }
     if (member == "fovy") {
       fovy = value;
+      return true;
+    }
+    if (member == "near") {
+      clipNear = value;
+      return true;
+    }
+    if (member == "far") {
+      clipFar = value;
       return true;
     }
     return false;
@@ -138,6 +149,9 @@ namespace BARNEY_NS {
     dd.perspective.lens_00 = from;
     dd.perspective.focusDistance = focusDistance;
     dd.perspective.apertureRadius = apertureRadius;
+    dd.clipNear = clipNear;
+    dd.clipFar  = clipFar;
+    dd.clipAxis = normalize(direction);
     commitBaseDeviceData();
   }
     
@@ -224,6 +238,9 @@ namespace BARNEY_NS {
     dd.orthographic.org_dv  = dir_dv;
     dd.orthographic.height  = height;
     dd.orthographic.aspect  = aspect;
+    dd.clipNear = ortho_near;
+    dd.clipFar  = ortho_far;
+    dd.clipAxis = dir_00;
     commitBaseDeviceData();
   }
     

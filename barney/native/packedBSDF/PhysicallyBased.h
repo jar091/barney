@@ -728,7 +728,26 @@ namespace BARNEY_NS {
           // lights too dark by about a factor pi.
           if (NdotL <= 0.0f)
             return EvalRes(vec3f(0.0f), pdf);
-          return EvalRes(base * ONE_PI, pdf);
+          // That cosine is the one of the geometric normal, but the
+          // light a surface receives depends on its shading normal 'N'
+          // (normal maps, smooth shading): a normal-mapped facet turned
+          // to the light has to get brighter. Swap the cosines here.
+          const float cosNg = cosToGeometricNormal(dg, wi);
+          if (cosNg <= 0.0f)
+            // light from below the surface itself
+            return EvalRes(vec3f(0.0f), pdf);
+          return EvalRes(base * (ONE_PI * NdotL / cosNg), pdf);
+        }
+
+        /*! cosine between 'wi' and the geometric normal, on the side
+          of the surface that the viewer is on; <= 0 if 'wi' points
+          into the surface */
+        inline __rtc_device float cosToGeometricNormal(const DG &dg,
+                                                       const vec3f &wi) const
+        {
+          const vec3f Ng = (dot(dg.Ng, dg.wo) < 0.0f) ? -dg.Ng : dg.Ng;
+          const float cosNg = dot(Ng, wi);
+          return (cosNg > 1e-6f) ? cosNg : 0.0f;
         }
 
         // Importance-sample the BSDF (port of VisRTX nextRay): clearcoat lobe
@@ -745,6 +764,35 @@ namespace BARNEY_NS {
                                          const DG &dg,
                                          Random &random,
                                          bool dbg) const
+        {
+          scatterLobes(scatter,dg,random,dbg);
+          if (!scatter.valid() || scatter.offsetDirection < 0.0f)
+            // nothing sampled, or a ray that passes through the surface
+            return;
+
+          // Reflection: the renderer weighs 'f_r' with the cosine of the
+          // geometric normal, the lobes above are defined (and sampled)
+          // relative to the shading normal: swap the cosines, as in
+          // eval(). A direction that points into the surface itself
+          // does not leave it: no scattered ray.
+          const float cosNg = cosToGeometricNormal(dg, scatter.dir);
+          if (cosNg <= 0.0f) {
+            scatter = {};
+            scatter.type = ScatterResult::NONE;
+            return;
+          }
+          const PhysicallyBasedShadingState st = unpack();
+          vec3f N = rtc::load(st.normal);
+          if (dot(N, dg.wo) < 0.0f) N = -N;
+          scatter.f_r = scatter.f_r * (fmaxf(dot(N, scatter.dir), 0.0f) / cosNg);
+        }
+
+        /*! samples one of the lobes; 'f_r' is the full BRDF without
+          cosine, relative to the shading normal */
+        inline __rtc_device void scatterLobes(ScatterResult &scatter,
+                                              const DG &dg,
+                                              Random &random,
+                                              bool dbg) const
         {
           scatter = {};
           const PhysicallyBasedShadingState st = unpack();

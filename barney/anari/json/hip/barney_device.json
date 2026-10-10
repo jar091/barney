@@ -104,6 +104,48 @@
           "tags": [],
           "default": [0.0, 0.0, 0.0, 0.0],
           "description": "cutting plane equation (nx, ny, nz, d); disabled when w < -1e28"
+        },
+        {
+          "name": "maxBounce",
+          "types": ["ANARI_INT32"],
+          "tags": [],
+          "minimum": 0,
+          "description": "maximum number of bounces after the camera hit (0: direct light only), counted as in Cycles; unset: 10"
+        },
+        {
+          "name": "maxDiffuseBounce",
+          "types": ["ANARI_INT32"],
+          "tags": [],
+          "minimum": 0,
+          "description": "maximum number of diffuse bounces of a path; unset: 1"
+        },
+        {
+          "name": "maxGlossyBounce",
+          "types": ["ANARI_INT32"],
+          "tags": [],
+          "minimum": 0,
+          "description": "maximum number of glossy and specular reflection bounces of a path; unset: no limit"
+        },
+        {
+          "name": "maxTransmissionBounce",
+          "types": ["ANARI_INT32"],
+          "tags": [],
+          "minimum": 0,
+          "description": "maximum number of bounces through surfaces (refraction) of a path; unset: no limit"
+        },
+        {
+          "name": "clampDirect",
+          "types": ["ANARI_FLOAT32"],
+          "tags": [],
+          "minimum": 0.0,
+          "description": "clamp of the light which arrives at the camera hit: one contribution to a path is scaled to R+G+B <= 3 * value; 0 or unset: no clamp"
+        },
+        {
+          "name": "clampIndirect",
+          "types": ["ANARI_FLOAT32"],
+          "tags": [],
+          "minimum": 0.0,
+          "description": "clamp of the light which arrives at later hits of a path: one contribution to a path is scaled to R+G+B <= 3 * value; 0 or unset: no clamp"
         }
       ]
     },

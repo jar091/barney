@@ -54,6 +54,10 @@ namespace BARNEY_NS {
       float m_aspect{1.f};
       float m_focusDistance = 0.f;
       float m_apertureRadius = 0.f;
+      /*! near/far clip plane distances along the camera direction;
+        only camera rays get clipped */
+      float m_near = 0.f;
+      float m_far  = std::numeric_limits<float>::infinity();
     };
 
     /*! ANARI 'orthographic' camera type - implements an

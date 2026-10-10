@@ -32,6 +32,12 @@ namespace BARNEY_NS {
       cutPlane        = staged.cutPlane;
       maxVolumeBounces = staged.maxVolumeBounces;
       sampleLimit     = staged.sampleLimit;
+      maxBounce       = staged.maxBounce;
+      maxDiffuseBounce = staged.maxDiffuseBounce;
+      maxGlossyBounce = staged.maxGlossyBounce;
+      maxTransmissionBounce = staged.maxTransmissionBounce;
+      clampDirect     = staged.clampDirect;
+      clampIndirect   = staged.clampIndirect;
       // volumeMultiScatter = staged.volumeMultiScatter;
     }
   
@@ -55,6 +61,14 @@ namespace BARNEY_NS {
         staged.ambientRadiance = value;
         return true;
       }
+      if (member == "clampDirect") {
+        staged.clampDirect = value;
+        return true;
+      }
+      if (member == "clampIndirect") {
+        staged.clampIndirect = value;
+        return true;
+      }
       return false;
     }
   
@@ -76,6 +90,22 @@ namespace BARNEY_NS {
       }
       if (member == "sampleLimit") {
         staged.sampleLimit = value;
+        return true;
+      }
+      if (member == "maxBounce") {
+        staged.maxBounce = value;
+        return true;
+      }
+      if (member == "maxDiffuseBounce") {
+        staged.maxDiffuseBounce = value;
+        return true;
+      }
+      if (member == "maxGlossyBounce") {
+        staged.maxGlossyBounce = value;
+        return true;
+      }
+      if (member == "maxTransmissionBounce") {
+        staged.maxTransmissionBounce = value;
         return true;
       }
       // if (member == "volumeMultiScatter") {
@@ -111,6 +141,13 @@ namespace BARNEY_NS {
       dd.pathsPerPixel = pathsPerPixel;
       dd.cutPlane = cutPlane;
       dd.maxVolumeBounces = maxVolumeBounces;
+      dd.maxBounce = maxBounce;
+      dd.maxDiffuseBounce = maxDiffuseBounce;
+      dd.maxGlossyBounce = maxGlossyBounce;
+      dd.maxTransmissionBounce = maxTransmissionBounce;
+      // as in cycles the value limits the mean of the channels
+      dd.clampDirectSum = 3.f * std::max(clampDirect,0.f);
+      dd.clampIndirectSum = 3.f * std::max(clampIndirect,0.f);
       // dd.volumeMultiScatter = volumeMultiScatter;
       return dd;
     }

@@ -38,6 +38,14 @@ namespace BARNEY_NS {
       anari::math::float4 m_background{0.f, 0.f, 0.f, 1.f};
       anari::math::float4 m_cutPlane{0.f, 0.f, 0.f, -1e30f};
       int m_maxVolumeBounces{8};
+      /* path length limits and clamps with the names and the meaning
+         of cycles; -1 and 0: not set */
+      int m_maxBounce{-1};
+      int m_maxDiffuseBounce{-1};
+      int m_maxGlossyBounce{-1};
+      int m_maxTransmissionBounce{-1};
+      float m_clampDirect{0.f};
+      float m_clampIndirect{0.f};
       int m_sampleLimit{1024};
       helium::ChangeObserverPtr<Array2D> m_backgroundImage;
     };

@@ -20,6 +20,14 @@ namespace BARNEY_NS {
       float    misWeight;
       int      numDiffuseBounces;
       int      numVolumeBounces;
+      /*! bounces off glossy/specular lobes and through surfaces, for
+        the renderer's path length limits */
+      uint8_t  numGlossyBounces;
+      uint8_t  numTransmissionBounces;
+      /*! this ray exceeded one of the renderer's path length limits:
+        it still collects emission (and environment light), but is
+        neither lit nor scattered at its hit (same as cycles) */
+      uint8_t  emissionOnly;
     };
 
     struct RayOnly {

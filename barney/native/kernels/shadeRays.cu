@@ -636,6 +636,14 @@ namespace BARNEY_NS {
       if (reduce_max(emission) > 0.f)
         fragment += incomingThroughput * emission;
 
+      // this ray exceeded one of the renderer's path length limits: it
+      // only was traced to find emitted light (above) or the
+      // environment (handled with the misses).
+      if (state.emissionOnly) {
+        ray.tMax = -1.f;
+        return;
+      }
+
       // bool doTransmission = false;
       // =  ((float)ray.mini.transmission > 0.f)
       // && (random() < (float)ray.mini.transmission);
@@ -769,8 +777,10 @@ namespace BARNEY_NS {
       // now, let's decide what to do with the ray itself
       // ==================================================================
 
-      // if we exceeded max depth we die, one way or another.
-      if (pathDepth >= MAX_PATH_DEPTH) {
+      // if we exceeded max depth we die, one way or another. (with
+      // the renderer's 'maxBounce' set, that limit replaces this one:
+      // see below)
+      if (renderer.maxBounce < 0 && pathDepth >= MAX_PATH_DEPTH) {
         ray.tMax = -1.f;
         return;
       }
@@ -788,8 +798,13 @@ namespace BARNEY_NS {
       if (dbg)
         printf("scatter result.valid ? %i\n",
                int(scatterResult.valid()));
-      if (!scatterResult.valid() || scatterResult.pdf <= 1e-6f)
+      if (!scatterResult.valid() || scatterResult.pdf <= 1e-6f) {
+        // no scattered ray: the path ends. (leaving the ray alive, with
+        // its old origin and direction, traced it to this same hit
+        // again: emission and light got added a second time)
+        ray.tMax = -1.f;
         return;
+      }
       
       if (scatterResult.type == ScatterResult::VOLUME) {
 #if BARNEY_USE_MULTI_SCATTERING
@@ -823,13 +838,57 @@ namespace BARNEY_NS {
 #endif
           )
         {
-          if (state.numDiffuseBounces >= MAX_DIFFUSE_BOUNCES) {
+          // without the renderer's 'maxDiffuseBounce' set: built-in limit
+          if (renderer.maxDiffuseBounce < 0
+              && state.numDiffuseBounces >= MAX_DIFFUSE_BOUNCES) {
             ray.tMax = -1.f;
             return;
           }
           state.numDiffuseBounces = state.numDiffuseBounces + 1;
         }
       ray.isSpecular = (scatterResult.type == ScatterResult::SPECULAR);
+
+      // ------------------------------------------------------------------
+      // path length limits of the renderer, with the meaning they
+      // have in cycles: 'pathDepth' is the number of bounces before
+      // this hit, the bounce we are about to do is counted in total
+      // and by its kind (diffuse; through the surface; everything
+      // else is a glossy or specular reflection). A bounce that
+      // exceeds a limit still gets traced, but only to collect
+      // emission and environment light.
+      // ------------------------------------------------------------------
+      {
+        bool exceedsLimit
+          = renderer.maxBounce >= 0
+          && pathDepth+1 > renderer.maxBounce;
+        const bool isDiffuseBounce
+          =  scatterResult.type == ScatterResult::DIFFUSE
+#if !BARNEY_USE_MULTI_SCATTERING
+          || scatterResult.type == ScatterResult::VOLUME
+#endif
+          ;
+        if (isDiffuseBounce) {
+          if (renderer.maxDiffuseBounce >= 0
+              && state.numDiffuseBounces > renderer.maxDiffuseBounce)
+            exceedsLimit = true;
+        } else if (scatterResult.type != ScatterResult::VOLUME) {
+          if (scatterResult.offsetDirection < 0.f) {
+            if (state.numTransmissionBounces < 255)
+              state.numTransmissionBounces = state.numTransmissionBounces + 1;
+            if (renderer.maxTransmissionBounce >= 0
+                && state.numTransmissionBounces > renderer.maxTransmissionBounce)
+              exceedsLimit = true;
+          } else {
+            if (state.numGlossyBounces < 255)
+              state.numGlossyBounces = state.numGlossyBounces + 1;
+            if (renderer.maxGlossyBounce >= 0
+                && state.numGlossyBounces > renderer.maxGlossyBounce)
+              exceedsLimit = true;
+          }
+        }
+        if (exceedsLimit)
+          state.emissionOnly = 1;
+      }
       
       if (dbg)
         printf("offsetting into sign %f, direction %f %f %f\n",
@@ -947,6 +1006,15 @@ namespace BARNEY_NS {
 #endif
         : 0.f;
       float incomingZ = ray.tMax;
+      if (generation == 0 && camera.hasClipPlanes()) {
+        // camera rays start on the camera's near clip plane and end on
+        // its far clip plane (see generateRays); the depth we report
+        // is still the distance to the camera itself, and a ray that
+        // ended on the far plane did not hit anything.
+        float tNear, tFar;
+        camera.getClipRange(ray.dir,tNear,tFar);
+        incomingZ = ray.hadHit() ? (incomingZ + tNear) : 1e30f;
+      }
       vec3f incomingN
         = ray.hadHit()
         ? ray.getN()
@@ -970,6 +1038,25 @@ namespace BARNEY_NS {
              ray,state,
              shadowRay,shadowState,
              generation);
+
+      // Clamp of this light contribution, as cycles does it: the sum
+      // R+G+B is limited and the color keeps its hue. A fragment of
+      // generation g is light that arrives at the hit of generation
+      // g-1 (a shadow ray that reached its light, emission or
+      // environment found by a bounce ray): generation 1 (and
+      // emission seen by the camera itself) is direct light, all
+      // later ones are indirect. The background seen by a camera ray
+      // is clamped as direct light too (as in cycles).
+      {
+        const float clampSum
+          = (generation > 1)
+          ? renderer.clampIndirectSum
+          : renderer.clampDirectSum;
+        const float fragmentSum
+          = fabsf(fragment.x)+fabsf(fragment.y)+fabsf(fragment.z);
+        if (clampSum > 0.f && fragmentSum > clampSum)
+          fragment = fragment * (clampSum / fragmentSum);
+      }
 
 #ifndef NDEBUG
       if (ray.crosshair && !dbg)

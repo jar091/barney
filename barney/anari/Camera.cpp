@@ -91,8 +91,8 @@ namespace BARNEY_NS {
       Camera::commitParameters();
       m_aspect = getParam<float>("aspect", 1.f);
       m_height = getParam<float>("height", 1.f);
-      m_near   = getParam<float>("near", 1.f);
-      m_far    = getParam<float>("far", 1.f);
+      m_near   = getParam<float>("near", 0.f);
+      m_far    = getParam<float>("far", std::numeric_limits<float>::infinity());
     }
 
     void Orthographic::finalize()
@@ -154,6 +154,8 @@ namespace BARNEY_NS {
       m_fovy = getParam<float>("fovy", anari::radians(60.f));
       m_focusDistance = getParam<float>("focusDistance", 0.f);
       m_apertureRadius = getParam<float>("apertureRadius", 0.f);
+      m_near = getParam<float>("near", 0.f);
+      m_far = getParam<float>("far", std::numeric_limits<float>::infinity());
     }
 
     void Perspective::finalize()
@@ -165,6 +167,8 @@ namespace BARNEY_NS {
       bnSet1f(m_barneyCamera, "focusDistance", m_focusDistance);
       bnSet1f(m_barneyCamera, "apertureRadius", m_apertureRadius);
       bnSet1f(m_barneyCamera, "fovy", anari::degrees(m_fovy));
+      bnSet1f(m_barneyCamera, "near", m_near);
+      bnSet1f(m_barneyCamera, "far", m_far);
       applyBaseCameraParameters();
       bnCommit(m_barneyCamera);
     }
