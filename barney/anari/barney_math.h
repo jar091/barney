@@ -78,8 +78,17 @@ namespace BARNEY_NS {
         return *this;
       }
 
+      bool empty() const
+      {
+        return !(lower.x <= upper.x && lower.y <= upper.y && lower.z <= upper.z);
+      }
+
       box3 &insert(const box3 b)
       {
+        // the corners of an empty box are at infinity, the wrong way
+        // around: as points they would make this box infinite
+        if (b.empty())
+          return *this;
         insert(b.lower);
         insert(b.upper);
         return *this;

@@ -106,16 +106,28 @@ namespace BARNEY_NS {
     {
       math::mat4 xfm = m_transform;
 
-      box3 result = group()->bounds();
+      const box3 local = group()->bounds();
 
-      math::float4 lower(result.lower, 1.f);
-      math::float4 upper(result.upper, 1.f);
+      box3 result;
+      result.invalidate();
 
-      lower = mul(xfm, lower);
-      upper = mul(xfm, upper);
+      // a group without surfaces and volumes (one of lights only) has
+      // no bounds: transforming its inverted, infinite box gives
+      // infinities and NaNs, which then end up in the bounds of the
+      // whole world
+      if (local.empty())
+        return result;
 
-      result.lower = math::float3(lower.x, lower.y, lower.z);
-      result.upper = math::float3(upper.x, upper.y, upper.z);
+      // the box of all eight transformed corners: two of them do not
+      // bound the box once the transform rotates
+      for (int i = 0; i < 8; i++) {
+        const math::float4 corner((i & 1) ? local.upper.x : local.lower.x,
+                                  (i & 2) ? local.upper.y : local.lower.y,
+                                  (i & 4) ? local.upper.z : local.lower.z,
+                                  1.f);
+        const math::float4 p = mul(xfm, corner);
+        result.insert(math::float3(p.x, p.y, p.z));
+      }
 
       return result;
     }
