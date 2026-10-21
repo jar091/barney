@@ -23,19 +23,17 @@ namespace BARNEY_NS {
       m_pixelSamples = getParam<int>("pixelSamples", 1);
       m_ambientRadiance = getParam<float>("ambientRadiance", 1.f);
       m_crosshairs = getParam<bool>("crosshairs", false);
-      m_denoise = getParam<bool>("denoise", true);
+      m_denoise = getParam<bool>("denoise", false);
       m_fadeOutDenoiser = getParam<bool>("fadeOutDenoiser", true);
       m_upscale = getParam<bool>("upscale", false);
       m_background = getParam<math::float4>("background", math::float4(0, 0, 0, 1));
       m_backgroundImage = getParamObject<Array2D>("background");
       m_cutPlane = getParam<math::float4>("cutPlane", math::float4(0, 0, 0, 0));
-      /* iw - @ap: using this to _both_ set max bounces _and_
-         enabel/disable multiscatter (if set to 0). imho there shold
-         be only two possible configs for multiscatter: which voluem
-         type (ie which phase function), and then how many bounces */
-      m_maxVolumeBounces = getParam<int>("maxVolumeBounces", 0);
+#if BARNEY_USE_MULTI_SCATTERING
+      m_maxVolumeBounces = getParam<int>("maxVolumeBounces", 8);
+      m_volumeMultiScatter = getParam<bool>("volumeMultiScatter", false);
+#endif
       m_sampleLimit = std::clamp(getParam<int>("sampleLimit", 1024), 1, INT_MAX);
-      // m_maxVolumeBounces = getParam<int>("maxVolumeBounces", 8);
 
       // path length limits and clamps; unset (or negative) ones keep
       // barney's built-in limits
@@ -54,7 +52,10 @@ namespace BARNEY_NS {
       bnSet1i(barneyRenderer, "crosshairs", (int)m_crosshairs);
       bnSet1i(barneyRenderer, "pathsPerPixel", (int)m_pixelSamples);
       bnSet1f(barneyRenderer, "ambientRadiance", m_ambientRadiance);
+#if BARNEY_USE_MULTI_SCATTERING
       bnSet1i(barneyRenderer, "maxVolumeBounces", m_maxVolumeBounces);
+      bnSet1i(barneyRenderer, "volumeMultiScatter", (int)m_volumeMultiScatter);
+#endif
       bnSet1i(barneyRenderer, "sampleLimit", m_sampleLimit);
       bnSet1i(barneyRenderer, "maxBounce", m_maxBounce);
       bnSet1i(barneyRenderer, "maxDiffuseBounce", m_maxDiffuseBounce);
@@ -62,7 +63,6 @@ namespace BARNEY_NS {
       bnSet1i(barneyRenderer, "maxTransmissionBounce", m_maxTransmissionBounce);
       bnSet1f(barneyRenderer, "clampDirect", m_clampDirect);
       bnSet1f(barneyRenderer, "clampIndirect", m_clampIndirect);
-      // bnSet1i(barneyRenderer, "volumeMultiScatter", (int)m_volumeMultiScatter);
       bnSet4f(barneyRenderer, "cutPlane",
               m_cutPlane.x, m_cutPlane.y, m_cutPlane.z, m_cutPlane.w);
 

@@ -37,7 +37,10 @@ namespace BARNEY_NS {
       bool m_upscale{false};
       anari::math::float4 m_background{0.f, 0.f, 0.f, 1.f};
       anari::math::float4 m_cutPlane{0.f, 0.f, 0.f, -1e30f};
+#if BARNEY_USE_MULTI_SCATTERING
       int m_maxVolumeBounces{8};
+      bool m_volumeMultiScatter{false};
+#endif
       /* path length limits and clamps with the names and the meaning
          of cycles; -1 and 0: not set */
       int m_maxBounce{-1};

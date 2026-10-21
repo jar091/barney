@@ -1,0 +1,27 @@
+{
+  "info": {
+    "name": "BN_VOLUME_PRINCIPLED",
+    "type": "extension",
+    "dependencies": []
+  },
+
+  "objects": [
+    {
+      "type": "ANARI_VOLUME",
+      "name": "principledVolume",
+      "description": "participating-medium volume controlled by opacity and emission transfer functions",
+      "parameters": [
+        { "name": "name", "types": ["ANARI_STRING"], "tags": [], "description": "optional object name" },
+        { "name": "visible", "types": ["ANARI_BOOL"], "tags": [], "default": true, "description": "whether the volume is visible" },
+        { "name": "value", "types": ["ANARI_SPATIAL_FIELD"], "tags": ["required"], "description": "spatial field holding the density values" },
+        { "name": "valueRange", "types": ["ANARI_FLOAT32_BOX1"], "tags": [], "default": [0.0, 1.0], "description": "sampled values of the field are clamped to this range" },
+        { "name": "unitDistance", "types": ["ANARI_FLOAT32"], "tags": [], "default": 1.0, "description": "makes the volume uniformly thinner or thicker" },
+        { "name": "color", "types": ["ANARI_FLOAT32_VEC4", "ANARI_FLOAT32_VEC3", "ANARI_ARRAY1D"], "elementType": ["ANARI_FLOAT32_VEC3", "ANARI_FLOAT32_VEC4"], "tags": [], "default": [1.0, 1.0, 1.0, 1.0], "description": "sampled color" },
+        { "name": "opacity", "types": ["ANARI_FLOAT32", "ANARI_ARRAY1D"], "elementType": ["ANARI_FLOAT32"], "tags": [], "default": 1.0, "description": "sampled opacity" },
+        { "name": "anisotropy", "types": ["ANARI_FLOAT32"], "tags": [], "default": 0.6, "minimum": -1.0, "maximum": 1.0, "description": "Henyey-Greenstein phase function anisotropy" },
+        { "name": "emissionStrength", "types": ["ANARI_FLOAT32"], "tags": [], "default": 0.0, "description": "strength of the volumetric emission" },
+        { "name": "emissionMap", "types": ["ANARI_ARRAY1D"], "elementType": ["ANARI_FLOAT32", "ANARI_FLOAT32_VEC3", "ANARI_FLOAT32_VEC4"], "tags": [], "description": "emission transfer function; RGB specifies color and alpha masks emission" }
+      ]
+    }
+  ]
+}
