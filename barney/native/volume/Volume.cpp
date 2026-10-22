@@ -46,6 +46,11 @@ namespace BARNEY_NS {
         needsMajorantRebuild = true;
         return true;
       }
+      if (member == "principledColorRamp") {
+        principled.colorRamp = value ? 1 : 0;
+        needsMajorantRebuild = true;
+        return true;
+      }
     
       return false;
     }

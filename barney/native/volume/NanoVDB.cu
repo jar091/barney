@@ -28,10 +28,11 @@ namespace BARNEY_NS {
                                 MCGrid::DD mcGrid,
                                 NanoVDBData::DD dd)
     {
+#if RTC_DEVICE_CODE
       using GridT = typename nanovdb::Grid<nanovdb::NanoTree<BuildType>>;
 
       vec3i mcDims = mcGrid.dims;
-      int tid = ci.launchIndex().x;
+      int tid = ci.getThreadIdx().x + ci.getBlockIdx().x*ci.getBlockDim().x;
       if (tid >= mcDims.x*mcDims.y*mcDims.z) return;
       vec3i mcID(tid  %  mcDims.x,
                  (tid /  mcDims.x) % mcDims.y,
@@ -43,7 +44,9 @@ namespace BARNEY_NS {
 
       vec3i lo = dd.indexBounds.lower+(vec3i(mcID)*dd.gridSize) / mcGrid.dims;
       vec3i hi = dd.indexBounds.lower+(vec3i(mcID+1)*dd.gridSize) / mcGrid.dims;
-      nanovdb::CoordBBox bbox({lo.x,lo.y,lo.z},
+      // the sampler reads voxels floor(p-0.5) and +1: a point of this cell
+      // also touches the voxel below lo (else the majorant can be too small)
+      nanovdb::CoordBBox bbox({lo.x-1,lo.y-1,lo.z-1},
                               {hi.x+1,hi.y+1,hi.z+1});
 
       GridT *gridPtr = (GridT *)dd.gridData;
@@ -56,6 +59,7 @@ namespace BARNEY_NS {
       }
       int cellIdx = mcID.x + mcGrid.dims.x * (mcID.y + mcGrid.dims.y * (mcID.z));
       mcGrid.scalarRanges[cellIdx] = scalarRange;
+#endif
     }
   
     NanoVDBData::NanoVDBData(Context *context,

@@ -103,6 +103,7 @@ namespace BARNEY_NS {
       float m_blackbodyIntensity{0.f};
       math::float3 m_blackbodyTint{1.f, 1.f, 1.f};
       float m_temperature{0.f};
+      bool m_colorRamp{false};
 
       math::float4 m_uniformColor{1.f, 1.f, 1.f, 1.f};
       float m_uniformOpacity{1.f};

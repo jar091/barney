@@ -305,6 +305,7 @@ namespace BARNEY_NS {
       m_blackbodyIntensity = getParam<float>("blackbodyIntensity", 0.f);
       m_blackbodyTint = getParam<math::float3>("blackbodyTint", math::float3(1.f));
       m_temperature = getParam<float>("temperature", 0.f);
+      m_colorRamp = getParam<bool>("colorRamp", false);
 
       m_colorData = getParamObject<helium::Array1D>("color");
       math::float4 uniformColor(1.f);
@@ -361,6 +362,7 @@ namespace BARNEY_NS {
       bnSet3f(vol, "principledBlackbodyTint",
               m_blackbodyTint.x, m_blackbodyTint.y, m_blackbodyTint.z);
       bnSet1f(vol, "principledTemperature", m_temperature);
+      bnSet1i(vol, "principledColorRamp", m_colorRamp ? 1 : 0);
 
       if (!m_rgbaMap.empty()) {
         bnVolumeSetXF(vol,

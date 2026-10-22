@@ -25,6 +25,10 @@
 
 #cmakedefine01 BARNEY_USE_MULTI_SCATTERING
 
+// NanoVDB spatial fields (set in the top-level CMakeLists.txt; without this
+// line the "nanovdb" field compiled to a stub that throws)
+#cmakedefine01 BARNEY_HAVE_NANOVDB
+
 #define BARNEY_LIBRARY_NAME barney
 #define BARNEY_BACKEND_NAME @BARNEY_BACKEND_NAME@
 #define BARNEY_DEVICE_NAME  barney_@BARNEY_BACKEND_NAME@

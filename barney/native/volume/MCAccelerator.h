@@ -665,7 +665,18 @@ namespace BARNEY_NS {
                  tint = ms > 0.f ? sigma_s / ms : tint;
                  hitScatteringAlbedo = reduce_max(sigma_s) / sigma_t;
                }
-               emission = principledEmission(scalar, self.volume.principled);
+               if (self.volume.principled.colorRamp) {
+                 /* collision estimator of an emitting medium: a real
+                    collision happens with density sigma_t, so the
+                    emission added there is Le/sigma_t (expected value
+                    = integral of T*Le along the ray, as in Cycles) */
+                 emission = sigma_t > 0.f
+                   ? self.volume.principled.emissionStrength
+                     * self.volume.principled.emissionColor
+                     * getPos(tf) * (tf.w / sigma_t)
+                   : vec3f(0.f);
+               } else
+                 emission = principledEmission(scalar, self.volume.principled);
              }
              if (reduce_max(emission) > 0.f) {
                ray.setVolumeHitWithEmission(P,

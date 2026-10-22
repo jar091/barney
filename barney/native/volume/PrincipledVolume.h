@@ -15,6 +15,11 @@ namespace BARNEY_NS {
       scalar field samples (phase 2 — not baked through a 1D TF). */
     struct PrincipledVolumeParams {
       int     enabled = 0;
+      /*! Blender ColorRamp mode: the transfer function drives everything.
+        sigma = density * tf.w * (scatter+absorption) (tf.w already holds
+        1/unitDistance), Le = emissionStrength * emissionColor * tf.rgb *
+        tf.w; the scalar itself does not scale the density. */
+      int     colorRamp = 0;
       float   density = 1.f;
       vec3f   scatterColor = vec3f(0.8f);
       vec3f   absorptionColor = vec3f(0.f);
@@ -29,6 +34,7 @@ namespace BARNEY_NS {
 
       struct DD {
         int     enabled;
+        int     colorRamp;
         float   density;
         vec3f   scatterColor;
         vec3f   absorptionColor;
@@ -46,6 +52,7 @@ namespace BARNEY_NS {
       {
         DD dd;
         dd.enabled = enabled;
+        dd.colorRamp = colorRamp;
         dd.density = density;
         dd.scatterColor = scatterColor;
         dd.absorptionColor = absorptionColor;
@@ -88,6 +95,8 @@ namespace BARNEY_NS {
     float principledDensityFactor(float scalar,
                                   const PrincipledVolumeParams::DD &p)
     {
+      if (p.colorRamp)
+        return p.density;
       float s = clamp(scalar, p.valueRange.lower, p.valueRange.upper);
       if (p.densityThreshold > 0.f && s < p.densityThreshold)
         return 0.f;
