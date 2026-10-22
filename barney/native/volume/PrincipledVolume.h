@@ -5,16 +5,19 @@
 #pragma once
 
 #include "barney/native/common/barney-common.h"
+#include "native/volume/TransferFunction.h"
 
 namespace BARNEY_NS {
   namespace native {
     
     struct Device;
 
-    /*! Cycles-style principled volume coefficients evaluated directly from
-      scalar field samples (phase 2 — not baked through a 1D TF). */
+    /*! Direct two-transfer-function volume model. The regular transfer
+      function supplies scattering tint and extinction; the emission transfer
+      function supplies emission color and mask. */
     struct PrincipledVolumeParams {
       int     enabled = 0;
+<<<<<<< HEAD
       /*! Blender ColorRamp mode: the transfer function drives everything.
         sigma = density * tf.w * (scatter+absorption) (tf.w already holds
         1/unitDistance), Le = emissionStrength * emissionColor * tf.rgb *
@@ -27,13 +30,13 @@ namespace BARNEY_NS {
       float   densityThreshold = 0.f;
       float   densityScale = 1.f;
       range1f valueRange = { 0.f, 1.f };
+=======
+>>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
       float   emissionStrength = 0.f;
-      float   blackbodyIntensity = 0.f;
-      vec3f   blackbodyTint = vec3f(1.f);
-      float   temperature = 0.f;
 
       struct DD {
         int     enabled;
+<<<<<<< HEAD
         int     colorRamp;
         float   density;
         vec3f   scatterColor;
@@ -42,16 +45,16 @@ namespace BARNEY_NS {
         float   densityThreshold;
         float   densityScale;
         range1f valueRange;
+=======
+>>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
         float   emissionStrength;
-        float   blackbodyIntensity;
-        vec3f   blackbodyTint;
-        float   temperature;
       };
 
       inline DD getDD(Device *device) const
       {
         DD dd;
         dd.enabled = enabled;
+<<<<<<< HEAD
         dd.colorRamp = colorRamp;
         dd.density = density;
         dd.scatterColor = scatterColor;
@@ -60,37 +63,26 @@ namespace BARNEY_NS {
         dd.densityThreshold = densityThreshold;
         dd.densityScale = densityScale;
         dd.valueRange = valueRange;
+=======
+>>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
         dd.emissionStrength = emissionStrength;
-        dd.blackbodyIntensity = blackbodyIntensity;
-        dd.blackbodyTint = blackbodyTint;
-        dd.temperature = temperature;
         (void)device;
         return dd;
       }
     };
 
+    /*! Radiance added at a real collision. The emission transfer function
+        independently controls emission color and mask. */
     inline __rtc_device
-    vec3f principledBlackbodyColor(float kelvin)
+    vec3f principledCollisionEmission(float scalar,
+                                      const TransferFunction::DD &emissionXf,
+                                      int emissionXfActive,
+                                      const PrincipledVolumeParams::DD &p)
     {
-      kelvin = clamp(kelvin, 1000.f, 40000.f);
-      float t = kelvin / 100.f;
-      float r, g, b;
-      if (t <= 66.f) {
-        r = 1.f;
-        g = clamp(0.390081578f * logf(t) - 0.631841444f, 0.f, 1.f);
-      } else {
-        r = clamp(1.292936186f * powf(t - 60.f, -0.1332047592f), 0.f, 1.f);
-        g = clamp(1.129890860f * powf(t - 60.f, -0.0755148492f), 0.f, 1.f);
-      }
-      if (t >= 66.f)
-        b = 1.f;
-      else if (t <= 19.f)
-        b = 0.f;
-      else
-        b = clamp(0.543206789f * logf(t - 10.f) - 1.196254089f, 0.f, 1.f);
-      return vec3f(r, g, b);
-    }
+      if (p.emissionStrength <= 0.f || !emissionXfActive)
+        return vec3f(0.f);
 
+<<<<<<< HEAD
     inline __rtc_device
     float principledDensityFactor(float scalar,
                                   const PrincipledVolumeParams::DD &p)
@@ -172,6 +164,12 @@ namespace BARNEY_NS {
         m = max(m, principledSigmaT(s, p));
       }
       return m;
+=======
+      const vec4f e = emissionXf.map(scalar);
+      if (e.w <= 0.f)
+        return vec3f(0.f);
+      return p.emissionStrength * e.w * getPos(e);
+>>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
     }
 
   }

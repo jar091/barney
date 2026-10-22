@@ -32,27 +32,38 @@ namespace BARNEY_NS {
       cleanup();
     }
 
-    SpatialField *SpatialField::createInstance(std::string_view subtype,
+    SpatialField *SpatialField::createInstance(std::string_view subType,
                                                BarneyGlobalState *s)
     {
-      if (subtype == "unstructured")
+      // ==================================================================
+      // allow plugins to override existing types by checking for
+      // plugins first
+      // ==================================================================
+      SpatialField *fromPlugin
+        = PluginInfrastructure::get()->newSpatialField(subType,s);
+      if (fromPlugin)
+        return fromPlugin;
+
+      // ==================================================================
+      // create hard-coded types
+      // ==================================================================
+      if (subType == "unstructured")
         return new UnstructuredField(s);
-      else if (subtype == "nanovdb")
+      if (subType == "nanovdb")
         return new NanoVDBSpatialField(s);
-      else if (subtype == "blockStructured")
+      if (subType == "blockStructured")
         return new BlockStructuredField(s);
-      else if (subtype == "structuredRegular")
+      if (subType == "structuredRegular")
         return new StructuredRegularField(s);
-      else {
-        // Try to create a custom Barney scalar field by type name
-        // This supports custom field types registered via ScalarFieldRegistry
-        auto *customField = new CustomSpatialField(s, std::string(subtype));
-        if (customField->isValid()) {
-          return customField;
-        }
-        delete customField;
-        return (SpatialField *)new UnknownObject(ANARI_SPATIAL_FIELD, subtype, s);
+      
+      // Try to create a custom Barney scalar field by type name
+      // This supports custom field types registered via ScalarFieldRegistry
+      auto *customField = new CustomSpatialField(s, std::string(subType));
+      if (customField->isValid()) {
+        return customField;
       }
+      delete customField;
+      return (SpatialField *)new UnknownObject(ANARI_SPATIAL_FIELD, subType, s);
     }
 
     void SpatialField::markFinalized()

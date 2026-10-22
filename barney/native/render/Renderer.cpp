@@ -30,7 +30,10 @@ namespace BARNEY_NS {
       pathsPerPixel   = staged.pathsPerPixel;
       bgTexture       = staged.bgTexture;
       cutPlane        = staged.cutPlane;
+#if BARNEY_USE_MULTI_SCATTERING
       maxVolumeBounces = staged.maxVolumeBounces;
+      volumeMultiScatter = staged.volumeMultiScatter;
+#endif
       sampleLimit     = staged.sampleLimit;
       maxBounce       = staged.maxBounce;
       maxDiffuseBounce = staged.maxDiffuseBounce;
@@ -38,7 +41,6 @@ namespace BARNEY_NS {
       maxTransmissionBounce = staged.maxTransmissionBounce;
       clampDirect     = staged.clampDirect;
       clampIndirect   = staged.clampIndirect;
-      // volumeMultiScatter = staged.volumeMultiScatter;
     }
   
     bool Renderer::setObject(const std::string &member,
@@ -84,10 +86,6 @@ namespace BARNEY_NS {
         staged.crosshairs = value;
         return true;
       }
-      if (member == "maxVolumeBounces") {
-        staged.maxVolumeBounces = value;
-        return true;
-      }
       if (member == "sampleLimit") {
         staged.sampleLimit = value;
         return true;
@@ -108,10 +106,16 @@ namespace BARNEY_NS {
         staged.maxTransmissionBounce = value;
         return true;
       }
-      // if (member == "volumeMultiScatter") {
-      //   staged.volumeMultiScatter = value;
-      //   return true;
-      // }
+#if BARNEY_USE_MULTI_SCATTERING
+      if (member == "maxVolumeBounces") {
+        staged.maxVolumeBounces = value;
+        return true;
+      }
+      if (member == "volumeMultiScatter") {
+        staged.volumeMultiScatter = value;
+        return true;
+      }
+#endif
       return false;
     }
   
@@ -140,7 +144,10 @@ namespace BARNEY_NS {
       dd.ambientRadiance = ambientRadiance;
       dd.pathsPerPixel = pathsPerPixel;
       dd.cutPlane = cutPlane;
+#if BARNEY_USE_MULTI_SCATTERING
       dd.maxVolumeBounces = maxVolumeBounces;
+      dd.volumeMultiScatter = volumeMultiScatter;
+#endif
       dd.maxBounce = maxBounce;
       dd.maxDiffuseBounce = maxDiffuseBounce;
       dd.maxGlossyBounce = maxGlossyBounce;
@@ -148,7 +155,6 @@ namespace BARNEY_NS {
       // as in cycles the value limits the mean of the channels
       dd.clampDirectSum = 3.f * std::max(clampDirect,0.f);
       dd.clampIndirectSum = 3.f * std::max(clampIndirect,0.f);
-      // dd.volumeMultiScatter = volumeMultiScatter;
       return dd;
     }
 

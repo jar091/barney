@@ -78,6 +78,10 @@ namespace BARNEY_NS {
     /*! near/far clip plane distances, measured along 'direction' */
     float clipNear       = 0.f;
     float clipFar        = BARNEY_INF;
+    /*! allows for specifying that ray should originate
+      'minumdistance' units away from the actual lens center,
+      default is 0 */
+    float nearClip = 0.f;
   };
   
   bool PerspectiveCamera::set1f(const std::string &member, const float &value)
@@ -94,6 +98,10 @@ namespace BARNEY_NS {
     }
     if (member == "focusDistance") {
       focusDistance = value;
+      return true;
+    }
+    if (member == "nearClip") {
+      nearClip = value;
       return true;
     }
     if (member == "fovy") {
@@ -152,6 +160,7 @@ namespace BARNEY_NS {
     dd.clipNear = clipNear;
     dd.clipFar  = clipFar;
     dd.clipAxis = normalize(direction);
+    dd.perspective.nearClip = nearClip;
     commitBaseDeviceData();
   }
     

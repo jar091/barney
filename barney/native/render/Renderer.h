@@ -23,8 +23,10 @@ namespace BARNEY_NS {
         float              ambientRadiance;
         int                pathsPerPixel;
         vec4f              cutPlane;
+#if BARNEY_USE_MULTI_SCATTERING
         int                maxVolumeBounces;
         int                volumeMultiScatter;
+#endif
         /*! path length limits with the meaning of cycles: number of
           bounces after the camera hit, in total and per kind of
           bounce; -1 means 'not set' (the built-in limits apply). The
@@ -69,8 +71,10 @@ namespace BARNEY_NS {
         int         pathsPerPixel;
         float       ambientRadiance;
         int         crosshairs;
-        int         maxVolumeBounces;
-        int         volumeMultiScatter;
+#if BARNEY_USE_MULTI_SCATTERING
+        int         maxVolumeBounces = 8;
+        int         volumeMultiScatter = 0;
+#endif
         int         sampleLimit;
         int         maxBounce = -1;
         int         maxDiffuseBounce = -1;
@@ -85,17 +89,10 @@ namespace BARNEY_NS {
       float       ambientRadiance = 1.f;
       int         crosshairs      = 0;
       vec4f       cutPlane        = vec4f(0,0,0,-1e30f);
-      /* iw - @ap: setting this to '0' so we can use it for both
-         multi- scattering and sci-vis mode no scattering. a value of
-         '0' means 'illuminate from light soruce, but do not scatter
-         path, so direct illum but no indirect, same as original
-         sci-vis mode. Made this the default value so if not set we'll
-         do non-multiscatter sci-vis, and only apps that set this
-         explicitly will use multi-scatter (and for those, we can then
-         also assume that they correctly set the other params) */
-      int         maxVolumeBounces = 0;// ap original value: 8;
-      /* iw - @ap: axed this; setting maxbounces to 0 should do the trick? */
-      // int         volumeMultiScatter = 1;
+#if BARNEY_USE_MULTI_SCATTERING
+      int         maxVolumeBounces = 8;
+      int         volumeMultiScatter = 0;
+#endif
       // maximum number of samples accumulated:
       int         sampleLimit = 1024;
       /* path length limits and clamps, see DD; -1 and 0: not set */

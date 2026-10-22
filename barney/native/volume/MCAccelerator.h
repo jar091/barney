@@ -648,6 +648,7 @@ namespace BARNEY_NS {
              float hitScatteringAlbedo = self.volume.scatteringAlbedo;
              if (self.volume.principled.enabled) {
                float scalar = self.volume.sampleScalar(P_obj, dbg);
+<<<<<<< HEAD
                vec3f sigma_s = principledSigmaS(scalar, self.volume.principled);
                vec3f sigma_a = principledSigmaA(scalar, self.volume.principled);
                vec4f tf = self.volume.xf.map(scalar, dbg);
@@ -677,6 +678,14 @@ namespace BARNEY_NS {
                    : vec3f(0.f);
                } else
                  emission = principledEmission(scalar, self.volume.principled);
+=======
+               hitScatteringAlbedo = 1.f;
+               emission
+                 = principledCollisionEmission(scalar,
+                                               self.volume.emissionXf,
+                                               self.volume.emissionXfActive,
+                                               self.volume.principled);
+>>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
              }
              if (reduce_max(emission) > 0.f) {
                ray.setVolumeHitWithEmission(P,
