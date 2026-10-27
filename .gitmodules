@@ -9,4 +9,5 @@
 	url = https://github.com/NVIDIA/owl
 [submodule "submodules/embree"]
 	path = submodules/embree
-	url = https://github.com/embree/embree
+	url = https://github.com/jar091/embree.git
+	branch = mjar/devel
