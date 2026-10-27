@@ -326,14 +326,9 @@ namespace BARNEY_NS {
     {
       FieldMappedVolume::commitParameters();
       m_emissionStrength = getParam<float>("emissionStrength", 0.f);
-<<<<<<< HEAD
-      m_emissionColor = getParam<math::float3>("emissionColor", math::float3(1.f));
-      m_blackbodyIntensity = getParam<float>("blackbodyIntensity", 0.f);
-      m_blackbodyTint = getParam<math::float3>("blackbodyTint", math::float3(1.f));
-      m_temperature = getParam<float>("temperature", 0.f);
+      // Blender ColorRamp mode: without an 'emissionMap' the color/opacity
+      // transfer function also drives the emission color
       m_colorRamp = getParam<bool>("colorRamp", false);
-=======
->>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
 
       m_colorData = getParamObject<helium::Array1D>("color");
       math::float4 uniformColor(1.f);
@@ -373,16 +368,7 @@ namespace BARNEY_NS {
       bnSet1f(vol, "anisotropy", m_anisotropy);
       bnSet1i(vol, "principledVolume", 1);
       bnSet1f(vol, "principledEmissionStrength", m_emissionStrength);
-<<<<<<< HEAD
-      bnSet3f(vol, "principledEmissionColor",
-              m_emissionColor.x, m_emissionColor.y, m_emissionColor.z);
-      bnSet1f(vol, "principledBlackbodyIntensity", m_blackbodyIntensity);
-      bnSet3f(vol, "principledBlackbodyTint",
-              m_blackbodyTint.x, m_blackbodyTint.y, m_blackbodyTint.z);
-      bnSet1f(vol, "principledTemperature", m_temperature);
       bnSet1i(vol, "principledColorRamp", m_colorRamp ? 1 : 0);
-=======
->>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
 
       if (!m_rgbaMap.empty()) {
         bnVolumeSetXF(vol,

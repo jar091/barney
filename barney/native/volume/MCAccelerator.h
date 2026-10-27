@@ -648,44 +648,13 @@ namespace BARNEY_NS {
              float hitScatteringAlbedo = self.volume.scatteringAlbedo;
              if (self.volume.principled.enabled) {
                float scalar = self.volume.sampleScalar(P_obj, dbg);
-<<<<<<< HEAD
-               vec3f sigma_s = principledSigmaS(scalar, self.volume.principled);
-               vec3f sigma_a = principledSigmaA(scalar, self.volume.principled);
-               vec4f tf = self.volume.xf.map(scalar, dbg);
-               if (tf.w > 0.f) {
-                 sigma_s = sigma_s * tf.w;
-                 sigma_a = sigma_a * tf.w;
-                 tint = tint * getPos(tf);
-               } else {
-                 sigma_s = vec3f(0.f);
-                 sigma_a = vec3f(0.f);
-               }
-               float sigma_t = reduce_max(sigma_s + sigma_a);
-               if (sigma_t > 0.f) {
-                 float ms = reduce_max(sigma_s);
-                 tint = ms > 0.f ? sigma_s / ms : tint;
-                 hitScatteringAlbedo = reduce_max(sigma_s) / sigma_t;
-               }
-               if (self.volume.principled.colorRamp) {
-                 /* collision estimator of an emitting medium: a real
-                    collision happens with density sigma_t, so the
-                    emission added there is Le/sigma_t (expected value
-                    = integral of T*Le along the ray, as in Cycles) */
-                 emission = sigma_t > 0.f
-                   ? self.volume.principled.emissionStrength
-                     * self.volume.principled.emissionColor
-                     * getPos(tf) * (tf.w / sigma_t)
-                   : vec3f(0.f);
-               } else
-                 emission = principledEmission(scalar, self.volume.principled);
-=======
                hitScatteringAlbedo = 1.f;
                emission
                  = principledCollisionEmission(scalar,
+                                               sample,
                                                self.volume.emissionXf,
                                                self.volume.emissionXfActive,
                                                self.volume.principled);
->>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
              }
              if (reduce_max(emission) > 0.f) {
                ray.setVolumeHitWithEmission(P,

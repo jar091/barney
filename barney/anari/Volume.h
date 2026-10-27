@@ -95,14 +95,7 @@ namespace BARNEY_NS {
 
     private:
       float m_emissionStrength{0.f};
-<<<<<<< HEAD
-      math::float3 m_emissionColor{1.f, 1.f, 1.f};
-      float m_blackbodyIntensity{0.f};
-      math::float3 m_blackbodyTint{1.f, 1.f, 1.f};
-      float m_temperature{0.f};
       bool m_colorRamp{false};
-=======
->>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
 
       math::float4 m_uniformColor{1.f, 1.f, 1.f, 1.f};
       float m_uniformOpacity{1.f};

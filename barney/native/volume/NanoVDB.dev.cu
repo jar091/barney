@@ -51,13 +51,8 @@ namespace BARNEY_NS {
 
     BARNEY_NANOVDB_FLOAT_TYPES(NANOVDB_EXPORT_GEOM)
 #undef NANOVDB_EXPORT_GEOM
-<<<<<<< HEAD
-  }
-}
-=======
   } // namespace native
 } // namespace BARNEY_NS
->>>>>>> 4d9b843ff2ffd7e78b8fcd9423c6ea90fea90309
 
 
 #endif
